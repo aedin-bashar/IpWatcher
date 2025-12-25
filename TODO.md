@@ -1,7 +1,7 @@
 # TODO
 
 ## High priority
-- [ ] Persist IPs in SQLite instead of a text file (Infrastructure/Storage)
+- [x] Persist IPs in SQLite instead of a text file (Infrastructure/Storage)
 - [ ] Add logging (Worker + Infrastructure)
 
 ## Tests

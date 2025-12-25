@@ -13,8 +13,9 @@ builder.Services.AddWindowsService();
 builder.Services.AddOptions<EmailOptions>()
 	.Bind(builder.Configuration.GetSection("Email"));
 
-builder.Services.AddOptions<IpStorageOptions>()
-	.Bind(builder.Configuration.GetSection("IpStorage"));
+// NEW: SQLite options
+builder.Services.AddOptions<SqliteIpStorageOptions>()
+	.Bind(builder.Configuration.GetSection("IpStorageSqlite"));
 
 builder.Services.AddHttpClient<IPublicIpProvider, IpifyPublicIpProvider>(client =>
 {
@@ -22,7 +23,9 @@ builder.Services.AddHttpClient<IPublicIpProvider, IpifyPublicIpProvider>(client 
 	client.BaseAddress = new Uri(string.IsNullOrWhiteSpace(baseUrl) ? "https://api.ipify.org" : baseUrl);
 });
 
-builder.Services.AddSingleton<IIpStorage, FileIpStorage>();
+// CHANGE: use SQLite storage instead of file storage
+builder.Services.AddSingleton<IIpStorage, SqliteIpStorage>();
+
 builder.Services.AddSingleton<IEmailNotifier, MailKitEmailNotifier>();
 builder.Services.AddTransient<CheckIpChangeUseCase>();
 
