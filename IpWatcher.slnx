@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="TODO.md" />
+  </Folder>
+  <Project Path="IpWatcher.Application/IpWatcher.Application.csproj" />
+  <Project Path="IpWatcher.Domain/IpWatcher.Domain.csproj" />
+  <Project Path="IpWatcher.Infrastructure/IpWatcher.Infrastructure.csproj" />
+  <Project Path="IpWatcher.Worker/IpWatcher.Worker.csproj" />
+</Solution>
