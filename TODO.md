@@ -2,6 +2,7 @@
 
 ## High priority
 - [x] Persist IPs in SQLite instead of a text file (Infrastructure/Storage)
+- [x] Switch SQLite persistence to EF Core + Migrations
 - [ ] Add logging (Worker + Infrastructure)
 
 ## Tests
