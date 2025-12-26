@@ -7,6 +7,7 @@ namespace IpWatcher.Worker.Startup;
 public sealed class DatabaseMigrationHostedService(
     IServiceProvider services,
     IConfiguration configuration,
+    IHostEnvironment environment,
     ILogger<DatabaseMigrationHostedService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -14,6 +15,10 @@ public sealed class DatabaseMigrationHostedService(
         var connectionString =
             configuration.GetConnectionString("IpWatcher")
             ?? throw new InvalidOperationException("Missing connection string 'ConnectionStrings:IpWatcher'.");
+
+        connectionString = SqliteConnectionStringHelper.ResolveToWritablePath(
+            connectionString,
+            environment.ContentRootPath);
 
         EnsureDatabaseDirectoryExists(connectionString);
 

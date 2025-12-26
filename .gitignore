@@ -487,3 +487,6 @@ $RECYCLE.BIN/
 *.sqlite-wal
 *.db
 *.bak
+
+# IpWatcher runtime data (never commit)
+IpWatcher.Worker/data/

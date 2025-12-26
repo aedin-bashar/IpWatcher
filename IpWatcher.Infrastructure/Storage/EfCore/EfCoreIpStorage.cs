@@ -1,10 +1,11 @@
 using IpWatcher.Application.Abstractions;
 using IpWatcher.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace IpWatcher.Infrastructure.Storage.EfCore;
 
-public sealed class EfCoreIpStorage(IpWatcherDbContext db) : IIpStorage
+public sealed class EfCoreIpStorage(IpWatcherDbContext db, ILogger<EfCoreIpStorage> logger) : IIpStorage
 {
     public async Task<IpAddress?> LoadLastIpAsync(CancellationToken cancellationToken)
     {
@@ -15,7 +16,13 @@ public sealed class EfCoreIpStorage(IpWatcherDbContext db) : IIpStorage
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return string.IsNullOrWhiteSpace(ipText) ? null : IpAddress.Parse(ipText);
+        if (string.IsNullOrWhiteSpace(ipText))
+        {
+            logger.LogInformation("No IP history found in database.");
+            return null;
+        }
+
+        return IpAddress.Parse(ipText);
     }
 
     public async Task SaveLastIpAsync(IpAddress ipAddress, CancellationToken cancellationToken)
@@ -28,8 +35,10 @@ public sealed class EfCoreIpStorage(IpWatcherDbContext db) : IIpStorage
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        if (!string.IsNullOrWhiteSpace(lastIpText) && string.Equals(lastIpText.Trim(), ipAddress.Value, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(lastIpText) &&
+            string.Equals(lastIpText.Trim(), ipAddress.Value, StringComparison.Ordinal))
         {
+            logger.LogInformation("IP {CurrentIp} already stored as latest. Skipping insert.", ipAddress.Value);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -42,5 +51,7 @@ public sealed class EfCoreIpStorage(IpWatcherDbContext db) : IIpStorage
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Stored new IP history row: {CurrentIp}.", ipAddress.Value);
     }
 }

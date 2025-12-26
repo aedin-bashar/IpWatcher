@@ -2,6 +2,7 @@
 using IpWatcher.Infrastructure.Storage.EfCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -9,9 +10,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IpWatcher.Infrastructure.Storage.EfCore.Migrations
 {
     [DbContext(typeof(IpWatcherDbContext))]
-    partial class IpWatcherDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251226193655_AddLogEventsTable")]
+    partial class AddLogEventsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
