@@ -6,8 +6,8 @@
 - [x] Add logging (Worker + Infrastructure)
 
 ## Tests
-- [ ] Add unit tests for use cases (IpWatcher.Application)
-- [ ] Add integration tests for end-to-end flow (IpWatcher.Worker)
+- [x] Add unit tests for use cases (IpWatcher.Application)
+- [x] Add integration tests for end-to-end flow (IpWatcher.Worker)
 
 ## Config / Ops
 - [ ] Move job intervals + parameters into appsettings.json (Worker)
