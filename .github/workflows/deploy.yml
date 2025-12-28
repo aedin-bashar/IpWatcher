@@ -83,3 +83,17 @@ jobs:
           sc.exe start $serviceName
           Start-Sleep -Seconds 2
           sc.exe query $serviceName
+
+      - name: Start service
+        shell: powershell
+        run: |
+          $serviceName = "IpWatcher.Worker"
+
+          $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+          if ($null -eq $svc) {
+            throw "Service '$serviceName' is not installed. Install it once on the server using sc.exe create."
+          }
+
+          sc.exe start $serviceName
+          Start-Sleep -Seconds 2
+          sc.exe query $serviceName
