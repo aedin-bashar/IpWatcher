@@ -107,3 +107,34 @@ jobs:
           sc.exe start $serviceName
           Start-Sleep -Seconds 2
           sc.exe query $serviceName
+
+      - name: Configure service environment variables (Email secrets)
+        shell: powershell
+        env:
+          IPWATCHER_EMAIL_USERNAME: ${{ secrets.IPWATCHER_EMAIL_USERNAME }}
+          IPWATCHER_EMAIL_PASSWORD: ${{ secrets.IPWATCHER_EMAIL_PASSWORD }}
+          IPWATCHER_EMAIL_FROM: ${{ secrets.IPWATCHER_EMAIL_FROM }}
+          IPWATCHER_EMAIL_TO: ${{ secrets.IPWATCHER_EMAIL_TO }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $serviceName = "IpWatcher.Worker"
+          $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName"
+
+          if (-not (Test-Path $regPath)) {
+            throw "Service registry key not found: $regPath. Install the service first."
+          }
+
+          $envValues = @(
+            "Email__UserName=$env:IPWATCHER_EMAIL_USERNAME",
+            "Email__Password=$env:IPWATCHER_EMAIL_PASSWORD",
+            "Email__From=$env:IPWATCHER_EMAIL_FROM",
+            "Email__To=$env:IPWATCHER_EMAIL_TO",
+            "DOTNET_ENVIRONMENT=Production"
+          )
+
+          New-ItemProperty -Path $regPath -Name Environment -PropertyType MultiString -Value $envValues -Force | Out-Null
+
+          sc.exe stop $serviceName | Out-Null
+          Start-Sleep -Seconds 2
+          sc.exe start $serviceName | Out-Null
+          sc.exe query $serviceName
