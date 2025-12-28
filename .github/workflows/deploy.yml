@@ -1,6 +1,7 @@
 name: Build-Test-Deploy (Home Server)
 
 on:
+  pull_request:
   push:
     branches: [ "master" ]
   workflow_dispatch:
@@ -40,6 +41,7 @@ jobs:
   deploy_to_server:
     needs: build_test_publish
     runs-on: self-hosted
+    if: github.event_name != 'pull_request'
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -48,7 +50,7 @@ jobs:
           path: .\_publish
 
       - name: Stop service (if exists)
-        shell: pwsh
+        shell: powershell
         run: |
           $serviceName = "IpWatcher.Worker"
           $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -58,18 +60,17 @@ jobs:
           }
 
       - name: Copy files to C:\Services\IpWatcher\app (keep Production config)
-        shell: pwsh
+        shell: powershell
         run: |
           $installDir = "C:\Services\IpWatcher\app"
           $publishDir = (Resolve-Path ".\_publish").Path
 
           if (!(Test-Path $installDir)) { New-Item -ItemType Directory -Force -Path $installDir | Out-Null }
 
-          # Copy everything except appsettings*.json so server config is not overwritten
           robocopy "$publishDir" "$installDir" /E /R:2 /W:2 /XF appsettings.json appsettings.*.json | Out-Null
 
       - name: Install service if missing, then start it
-        shell: pwsh
+        shell: powershell
         run: |
           $serviceName = "IpWatcher.Worker"
           $exePath = "C:\Services\IpWatcher\app\IpWatcher.Worker.exe"
