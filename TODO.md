@@ -10,8 +10,8 @@
 - [x] Add integration tests for end-to-end flow (IpWatcher.Worker)
 
 ## Config / Ops
-- [ ] Move job intervals + parameters into appsettings.json (Worker)
+- [x] Move job intervals + parameters into appsettings.json (Worker)
 - [ ] Add CI pipeline (build + test)
 
 ## Docs
-- [ ] Add README.md (setup, Windows Service install, configuration)
+- [x] Add README.md (setup, Windows Service install, configuration)
