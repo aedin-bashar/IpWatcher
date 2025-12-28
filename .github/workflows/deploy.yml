@@ -1,0 +1,84 @@
+name: Build-Test-Deploy (Home Server)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ipwatcher-deploy
+  cancel-in-progress: true
+
+jobs:
+  build_test_publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Publish (win-x64, self-contained)
+        run: >
+          dotnet publish .\IpWatcher.Worker\IpWatcher.Worker.csproj
+          -c Release -r win-x64 --self-contained true
+          -o .\_publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipwatcher-worker
+          path: .\_publish\
+
+  deploy_to_server:
+    needs: build_test_publish
+    runs-on: self-hosted
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ipwatcher-worker
+          path: .\_publish
+
+      - name: Stop service (if exists)
+        shell: pwsh
+        run: |
+          $serviceName = "IpWatcher.Worker"
+          $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+          if ($null -ne $svc -and $svc.Status -ne "Stopped") {
+            Stop-Service -Name $serviceName -Force
+            Start-Sleep -Seconds 2
+          }
+
+      - name: Copy files to C:\Services\IpWatcher\app (keep Production config)
+        shell: pwsh
+        run: |
+          $installDir = "C:\Services\IpWatcher\app"
+          $publishDir = (Resolve-Path ".\_publish").Path
+
+          if (!(Test-Path $installDir)) { New-Item -ItemType Directory -Force -Path $installDir | Out-Null }
+
+          # Copy everything except appsettings*.json so server config is not overwritten
+          robocopy "$publishDir" "$installDir" /E /R:2 /W:2 /XF appsettings.json appsettings.*.json | Out-Null
+
+      - name: Install service if missing, then start it
+        shell: pwsh
+        run: |
+          $serviceName = "IpWatcher.Worker"
+          $exePath = "C:\Services\IpWatcher\app\IpWatcher.Worker.exe"
+
+          $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+          if ($null -eq $svc) {
+            sc.exe create $serviceName binPath= "`"$exePath`"" start= auto
+          }
+
+          sc.exe start $serviceName
+          Start-Sleep -Seconds 2
+          sc.exe query $serviceName
