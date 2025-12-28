@@ -62,12 +62,22 @@ jobs:
       - name: Copy files to C:\Services\IpWatcher\app (keep Production config)
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
+
           $installDir = "C:\Services\IpWatcher\app"
           $publishDir = (Resolve-Path ".\_publish").Path
 
           if (!(Test-Path $installDir)) { New-Item -ItemType Directory -Force -Path $installDir | Out-Null }
 
-          robocopy "$publishDir" "$installDir" /E /R:2 /W:2 /XF appsettings.json appsettings.*.json | Out-Null
+          robocopy "$publishDir" "$installDir" /E /R:2 /W:2 /XF appsettings.json appsettings.*.json
+          $rc = $LASTEXITCODE
+
+          if ($rc -le 7) {
+            Write-Host "Robocopy succeeded with exit code $rc"
+            exit 0
+          }
+
+          throw "Robocopy failed with exit code $rc"
 
       - name: Install service if missing, then start it
         shell: powershell
