@@ -41,6 +41,7 @@ jobs:
   deploy_to_server:
     needs: build_test_publish
     runs-on: self-hosted
+    environment: production
     if: github.event_name != 'pull_request'
     steps:
       - name: Download artifact
@@ -79,24 +80,98 @@ jobs:
 
           throw "Robocopy failed with exit code $rc"
 
-      - name: Install service if missing, then start it
+      - name: Generate appsettings.json (production)
         shell: powershell
+        env:
+          EMAIL_HOST: ${{ vars.EMAIL_HOST }}
+          EMAIL_PORT: ${{ vars.EMAIL_PORT }}
+          EMAIL_USESSL: ${{ vars.EMAIL_USESSL }}
+          EMAIL_USERNAME: ${{ vars.EMAIL_USERNAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_TO: ${{ vars.EMAIL_TO }}
+          EMAIL_SUBJECT_PREFIX: ${{ vars.EMAIL_SUBJECT_PREFIX }}
+          IPIFY_BASEURL: ${{ vars.IPIFY_BASEURL }}
+          INTERVAL_MINUTES: ${{ vars.INTERVAL_MINUTES }}
         run: |
-          $serviceName = "IpWatcher.Worker"
-          $exePath = "C:\Services\IpWatcher\app\IpWatcher.Worker.exe"
+          $ErrorActionPreference = "Stop"
 
-          $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-          if ($null -eq $svc) {
-            sc.exe create $serviceName binPath= "`"$exePath`"" start= auto
+          $path = "C:\Services\IpWatcher\app\appsettings.json"
+
+          foreach ($required in @(
+            "EMAIL_HOST",
+            "EMAIL_PORT",
+            "EMAIL_USESSL",
+            "EMAIL_USERNAME",
+            "EMAIL_PASSWORD",
+            "EMAIL_FROM",
+            "EMAIL_TO",
+            "IPIFY_BASEURL",
+            "INTERVAL_MINUTES"
+          )) {
+            $value = [Environment]::GetEnvironmentVariable($required)
+            if ([string]::IsNullOrWhiteSpace($value)) {
+              throw "Missing required environment value: $required. Check GitHub Environment variables/secrets (environment: production)."
+            }
           }
 
-          sc.exe start $serviceName
-          Start-Sleep -Seconds 2
-          sc.exe query $serviceName
+          if ([string]::IsNullOrWhiteSpace($env:EMAIL_SUBJECT_PREFIX)) {
+            $env:EMAIL_SUBJECT_PREFIX = "[IpWatcher]"
+          }
+
+          $config = @{
+            Ipify = @{
+              BaseUrl = $env:IPIFY_BASEURL
+            }
+            ConnectionStrings = @{
+              IpWatcher = "Data Source=C:\\Services\\IpWatcher\\data\\ipwatcher.sqlite"
+            }
+            Email = @{
+              Host = $env:EMAIL_HOST
+              Port = [int]$env:EMAIL_PORT
+              UseSsl = [bool]::Parse($env:EMAIL_USESSL)
+              UserName = $env:EMAIL_USERNAME
+              Password = $env:EMAIL_PASSWORD
+              From = $env:EMAIL_FROM
+              To = $env:EMAIL_TO
+              SubjectPrefix = $env:EMAIL_SUBJECT_PREFIX
+            }
+            Jobs = @{
+              CheckIpChange = @{
+                IntervalMinutes = [int]$env:INTERVAL_MINUTES
+              }
+            }
+            Logging = @{
+              LogLevel = @{
+                Default = "Information"
+                "Microsoft.Hosting.Lifetime" = "Information"
+              }
+            }
+            Serilog = @{
+              MinimumLevel = @{
+                Default = "Information"
+                Override = @{
+                  Microsoft = "Warning"
+                  "Microsoft.Hosting.Lifetime" = "Information"
+                  System = "Warning"
+                }
+              }
+              Enrich = @("FromLogContext")
+              Properties = @{
+                Application = "IpWatcher.Worker"
+              }
+            }
+          }
+
+          $json = $config | ConvertTo-Json -Depth 10
+          Set-Content -Path $path -Value $json -Encoding UTF8
+          Write-Host "Wrote $path"
 
       - name: Start service
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
+
           $serviceName = "IpWatcher.Worker"
 
           $svc = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -106,35 +181,4 @@ jobs:
 
           sc.exe start $serviceName
           Start-Sleep -Seconds 2
-          sc.exe query $serviceName
-
-      - name: Configure service environment variables (Email secrets)
-        shell: powershell
-        env:
-          IPWATCHER_EMAIL_USERNAME: ${{ secrets.IPWATCHER_EMAIL_USERNAME }}
-          IPWATCHER_EMAIL_PASSWORD: ${{ secrets.IPWATCHER_EMAIL_PASSWORD }}
-          IPWATCHER_EMAIL_FROM: ${{ secrets.IPWATCHER_EMAIL_FROM }}
-          IPWATCHER_EMAIL_TO: ${{ secrets.IPWATCHER_EMAIL_TO }}
-        run: |
-          $ErrorActionPreference = "Stop"
-          $serviceName = "IpWatcher.Worker"
-          $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName"
-
-          if (-not (Test-Path $regPath)) {
-            throw "Service registry key not found: $regPath. Install the service first."
-          }
-
-          $envValues = @(
-            "Email__UserName=$env:IPWATCHER_EMAIL_USERNAME",
-            "Email__Password=$env:IPWATCHER_EMAIL_PASSWORD",
-            "Email__From=$env:IPWATCHER_EMAIL_FROM",
-            "Email__To=$env:IPWATCHER_EMAIL_TO",
-            "DOTNET_ENVIRONMENT=Production"
-          )
-
-          New-ItemProperty -Path $regPath -Name Environment -PropertyType MultiString -Value $envValues -Force | Out-Null
-
-          sc.exe stop $serviceName | Out-Null
-          Start-Sleep -Seconds 2
-          sc.exe start $serviceName | Out-Null
           sc.exe query $serviceName

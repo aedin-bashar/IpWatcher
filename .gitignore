@@ -490,3 +490,4 @@ $RECYCLE.BIN/
 
 # IpWatcher runtime data (never commit)
 IpWatcher.Worker/data/
+docs/deployment-plan.md

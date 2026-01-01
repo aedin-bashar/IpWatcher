@@ -11,7 +11,8 @@
 
 ## Config / Ops
 - [x] Move job intervals + parameters into appsettings.json (Worker)
-- [ ] Add CI pipeline (build + test)
+- [x] Add CI pipeline (build + test)
+- [x] GitHub: Use Environments + variables/secrets to generate appsettings.json per environment during deploy (Azure DevOps-style)
 
 ## Docs
 - [x] Add README.md (setup, Windows Service install, configuration)
