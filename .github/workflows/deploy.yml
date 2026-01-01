@@ -124,7 +124,7 @@ jobs:
               BaseUrl = $env:IPIFY_BASEURL
             }
             ConnectionStrings = @{
-              IpWatcher = "Data Source=C:\\Services\\IpWatcher\\data\\ipwatcher.sqlite"
+              IpWatcher = "Data Source=C:\Services\IpWatcher\data\ipwatcher.sqlite"
             }
             Email = @{
               Host = $env:EMAIL_HOST
